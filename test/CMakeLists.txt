@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(AME)
+project(AME_test)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -16,21 +16,12 @@ if (NOT CONFIGURED_ONCE)
         CACHE STRING "Flags used by the compiler during all build types." FORCE)
 endif()
 
-add_subdirectory(${PROJECT_SOURCE_DIR}/test)
-
-find_package (Threads)
-
-set(SRCS_AME
-    srcs/Core.cpp
-    srcs/ServiceManager.cpp
-    srcs/Services/Time.cpp
-    srcs/ThreadManager.cpp
-    srcs/Worker.cpp
+set(SRCS_AME_test
+    main.cpp
 )
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test)
 
-add_library(AME SHARED ${SRCS_AME})
-target_link_libraries(AME PUBLIC ${CMAKE_THREAD_LIBS_INIT})
-target_include_directories(AME PUBLIC include)
-target_compile_definitions(AME PUBLIC AME_EXPORT)
+add_executable(AME_test ${SRCS_AME_test})
+target_link_libraries(AME_test PUBLIC AME)   
+target_include_directories(AME_test PUBLIC ../include)

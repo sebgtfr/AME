@@ -10,6 +10,7 @@
 # include <cstdint>
 # include <cstring>
 
+# include <utility>
 # include <string>
 # include <vector>
 # include <iterator>
@@ -101,6 +102,62 @@ namespace   AME
 
     /* Public */
 
+    inline Buffer::Buffer(size_t const capacity)
+        : _data()
+    {
+        this->_data.reserve(capacity);
+    }
+
+    inline Buffer::Buffer(char const *data)
+        : _data(data, data + ::std::strlen(data))
+    {
+
+    }
+    
+    inline Buffer::Buffer(uint8_t const *data, size_t const size)
+        : _data(data, data + size)
+    {
+
+    }
+    
+    inline Buffer::Buffer(::std::string const &str)
+        : _data(str.begin(), str.end())
+    {
+
+    }
+
+    inline Buffer::Buffer(Buffer const &copy)
+        : _data(copy._data)
+    {
+    }
+
+    inline Buffer::Buffer(Buffer &&buffer)
+        : _data(::std::move(buffer._data))
+    {
+    }
+
+    inline Buffer               &Buffer::operator=(Buffer const &other)
+    {
+        if (&other != this)
+        {
+            this->_data = other._data;
+        }
+        return *this;
+    }
+
+    inline Buffer               &Buffer::operator=(Buffer &&other)
+    {
+        if (&other != this)
+        {
+            this->_data = ::std::move(other._data);
+        }
+        return *this;
+    }
+
+    inline Buffer::~Buffer(void)
+    {
+    }
+
     /* Accessors */
     inline size_t                   Buffer::size(void) const
     {
@@ -143,6 +200,18 @@ namespace   AME
     }
 
     /* Methods */
+    inline void                     Buffer::addMemory(size_t const size)
+    {
+        this->_data.reserve(this->capacity() + size);
+    }
+
+    inline void                     Buffer::reset(size_t const size)
+    {
+        this->clear();
+        this->shrinkToFit();
+        this->addMemory(size);
+    }
+
     inline void                    Buffer::resize(size_t const size)
     {
         this->_data.resize(size);

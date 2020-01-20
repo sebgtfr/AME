@@ -1,0 +1,16 @@
+stages:
+  - test
+
+test:
+  image: gcc:latest
+  stage: test
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y -qq cmake
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -G "Unix Makefiles" && cmake --build .
+    - ./bin/test/AME_test
+  except:
+    - master
