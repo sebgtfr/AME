@@ -240,7 +240,14 @@ namespace   AME
 
     inline void                     Buffer::append(Buffer const &buffer)
     {
-        ::std::copy(buffer._data.begin(), buffer._data.end(), ::std::back_inserter(this->_data));
+        if (this != &buffer)
+        {
+            ::std::copy(buffer._data.begin(), buffer._data.end(), ::std::back_inserter(this->_data));
+        }
+        else
+        {
+            this->append(Buffer(buffer));
+        }
     }
 
     inline void                     Buffer::append(::std::string const &str)
@@ -261,7 +268,15 @@ namespace   AME
 
     inline void                     Buffer::append(Buffer const &buffer, TransformCallback const &callback)
     {
-        ::std::transform(buffer._data.begin(), buffer._data.end(), ::std::back_inserter(this->_data), callback);
+        if (this != &buffer)
+        {
+            ::std::transform(buffer._data.begin(), buffer._data.end(), ::std::back_inserter(this->_data), callback);
+        }
+        else
+        {
+            this->append(Buffer(buffer), callback);
+        }
+        
     }
 
     inline void                     Buffer::append(::std::string const &str, TransformCallback const &callback)
