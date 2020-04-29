@@ -8,7 +8,9 @@
 # define _AME_WORKER_HPP_
 
 # include <utility>
+# include <memory>
 # include <functional>
+# include <type_traits>
 
 # include "AME/Tools/import.hpp"
 
@@ -46,23 +48,82 @@ namespace   AME
             Worker(void);
             ~Worker(void);
 
-            void        push(Work const &work);
-            void        push(Work &&work);
-            void        push(Worker::Node *node);
-            Worker::Node *pop(void);
-            void        clear(void);
+            void            push(Worker::Node *node);
+            Worker::Node    *pop(void);
+            void            clear(void);
 
             /* Template methods */
 
-            template <typename Callback, typename... Args>
-            inline void push(Callback &&callback, Args&&... args)
+            template <typename Object, typename T, typename... Args, typename = ::std::enable_if_t<!::std::is_same_v<::std::remove_pointer_t<::std::decay_t<T>>, Object>>>
+            inline void     push(bool (Object::* method)(), T&& obj, Args&&... args)
             {
-                this->push(Worker::Create(::std::forward<Callback>(callback),
-                            ::std::forward<Args>(args)...));
+                this->addNode(new Worker::Node(Worker::Create(method, ::std::forward<T>(obj), ::std::forward<Args>(args)...)));
+            }
+
+            template <typename Object>
+            inline void     push(bool (Object::* method)())
+            {
+                this->addNode(new Worker::Node(Worker::Create(method)));
+            }
+
+            template <typename Object, typename... Args>
+            inline void     push(bool (Object::* method)(Args...), Object& obj, Args&&... args)
+            {
+                this->addNode(new Worker::Node(Worker::Create(method, obj, ::std::forward<Args>(args)...)));
+            }
+
+            template <typename Object, typename... Args>
+            inline void     push(bool (Object::* method)(Args...), Object* obj, Args&&... args)
+            {
+                this->addNode(new Worker::Node(Worker::Create(method, obj, ::std::forward<Args>(args)...)));
+            }
+
+            template <typename Callback, typename... Args>
+            inline void     push(Callback &&callback, Args&&... args)
+            {
+                using RetType = ::std::invoke_result_t<Callback, Args...>;
+
+                if constexpr (::std::is_same_v<RetType, void>)
+                {
+                    this->addNode(new Worker::Node(Worker::Create([callback](Args&&... args) -> bool
+                    {
+                        ::std::invoke(callback, ::std::forward<Args>(args)...);
+                        return false;
+                    }, ::std::forward<Args>(args)...)));
+                }
+                else
+                {
+                    this->addNode(new Worker::Node(Worker::Create(::std::forward<Callback>(callback),
+                                                                    ::std::forward<Args>(args)...)));
+                }
             }
 
             /* Static template methods */
-            
+
+            template <typename Object, typename T, typename... Args, typename = ::std::enable_if_t<!::std::is_same_v<::std::remove_pointer_t<::std::decay_t<T>>, Object>>>
+            static Work     Create(bool (Object::* method)(), T &&obj, Args&&... args)
+            {
+                return ::std::bind(method, ::std::make_shared<Object>(::std::forward<T>(obj), ::std::forward<Args>(args)...));
+            }
+
+            template <typename Object>
+            static Work     Create(bool (Object::* method)())
+            {
+                return ::std::bind(method, ::std::make_shared<Object>());
+            }
+
+            template <typename Object, typename... Args>
+            static Work     Create(bool (Object::*method)(Args...), Object &obj, Args&&... args)
+            {
+                return ::std::bind(method, ::std::ref(obj), ::std::forward<Args>(args)...);
+            }
+
+            template <typename Object, typename... Args>
+            static Work     Create(bool (Object::*method)(Args...), Object *obj, Args&&... args)
+            {
+                return ::std::bind(method, obj, ::std::forward<Args>(args)...);
+            }
+
             template <typename Callback, typename... Args>
             static Work     Create(Callback &&callback, Args&&... args)
             {
@@ -94,16 +155,6 @@ namespace   AME
     }
 
     /* Methods */
-
-    inline void     Worker::push(Work const &work)
-    {
-        this->addNode(new Worker::Node(work));
-    }
-
-    inline void     Worker::push(Work &&work)
-    {
-        this->addNode(new Worker::Node(::std::move(work)));
-    }
 
     inline void     Worker::push(Worker::Node *node)
     {

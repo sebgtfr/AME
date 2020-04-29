@@ -12,22 +12,6 @@ namespace   AME
 
     /* Methods */
 
-    /* Works control */
-
-    void                        Core::post(Worker::Work const &work)
-    {
-        ::std::scoped_lock  lock(this->_lock);
-
-        this->_worker.push(work);
-    }
-
-    void                        Core::post(Worker::Work &&work)
-    {
-        ::std::scoped_lock  lock(this->_lock);
-        
-        this->_worker.push(::std::move(work));
-    }
-
     void                        Core::run(void)
     {
         ThreadManager::Id const currentThreadId = ::std::this_thread::get_id();

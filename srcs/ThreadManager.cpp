@@ -94,7 +94,7 @@ namespace   AME
     {
         ::std::scoped_lock<::std::mutex> lock(this->_lockerGarbage);
 
-        if (this->_garbage.get_id() != ::std::this_thread::get_id())
+        if (this->_garbage.joinable() && this->_garbage.get_id() != ::std::this_thread::get_id())
         {
             this->_garbage.join();
         }

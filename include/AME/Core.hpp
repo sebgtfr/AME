@@ -14,6 +14,7 @@
 # include "AME/Worker.hpp"
 # include "AME/ThreadManager.hpp"
 # include "AME/Timeout.hpp"
+# include "AME/IntervalService.hpp"
 
 namespace   AME
 {
@@ -30,12 +31,7 @@ namespace   AME
 
             /* Methods */
 
-            /* Works control */
-
-            void                    post(Worker::Work const &work);
-            void                    post(Worker::Work &&work);
-
-            /* threads control */
+            /* Threads control */
 
             void                    addThreads(unsigned int const nbThread = 1);
             size_t					getNbWorkingThread(void) const;
@@ -44,17 +40,18 @@ namespace   AME
             void                    stop(ThreadManager::Id const &id);
             void                    stop(unsigned int const nbThread);
 
-            /* inner services */
+            /* Inner services */
 
             void                    run(void);
             void                    clear(void);
+            void                    setInterval(uint32_t const &time, Worker::Work &&work);
 
             /* Template methods */
 
             template<typename Callback, typename... Args>
             void                    post(Callback &&callback, Args&&... args)
             {
-                ::std::scoped_lock  lock(this->_lock);
+                ::std::scoped_lock<::std::mutex>    lock(this->_lock);
 
                 this->_worker.push(::std::forward<Callback>(callback), ::std::forward<Args>(args)...);
             }
@@ -71,6 +68,13 @@ namespace   AME
                     }
                     return CONTINUE;
                 }, timeout, static_cast<::std::function<void()>>(::std::bind(::std::forward<Callback>(callback), ::std::forward<Args>(args)...)));
+            }
+
+            template<typename Callback, typename... Args>
+            inline void             setInterval(uint32_t const &time, Callback &&callback, Args&&... args)
+            {
+                this->setInterval(time, Worker::Create(::std::forward<Callback>(callback),
+                                                        ::std::forward<Args>(args)...));
             }
 
         private:
@@ -103,7 +107,7 @@ namespace   AME
 
     /* Methods */
 
-    /* threads control */
+    /* Threads control */
 
     inline void     Core::addThreads(unsigned int const nbThread)
     {
@@ -133,6 +137,13 @@ namespace   AME
     inline void     Core::stop(unsigned int const nbThread)
     {
         this->_threadManager.remove(this, nbThread);
+    }
+
+    /* Inner services */
+
+    inline void     Core::setInterval(uint32_t const &time, Worker::Work &&work)
+    {
+        this->post(&IntervalService::update, time, work);
     }
 }
 

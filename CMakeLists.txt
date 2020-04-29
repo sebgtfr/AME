@@ -22,6 +22,7 @@ find_package (Threads)
 
 set(SRCS_AME
     srcs/Core.cpp
+    srcs/IntervalService.cpp
     srcs/ThreadManager.cpp
     srcs/Worker.cpp
 )

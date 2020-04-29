@@ -8,6 +8,10 @@
 
 #include "test.hpp"
 
+constexpr char const ns[] = " ns";
+constexpr char const us[] = " us";
+constexpr char const ms[] = " ms";
+
 static void launchTest(::AME::Core *core, ::std::string const &testName,
                         ::std::function<void(::AME::Core *)> const &testFunc)
 {
@@ -23,9 +27,9 @@ static ::std::size_t    executeTestWorks(::AME::Core *core)
 
     for (::std::size_t i = 0; i < NB_WORKS; ++i)
     {
-        core->post([]() -> bool
+        core->post([]()
         {
-            return ::AME::Core::STOP;
+            return ;
         });
     }
 
@@ -37,9 +41,6 @@ static ::std::size_t    executeTestWorks(::AME::Core *core)
     return NB_WORKS;
 }
 
-constexpr char const ns[] = " ns";
-constexpr char const us[] = " us";
-constexpr char const ms[] = " ms";
 
 static void         testWorks(::AME::Core *core)
 {
@@ -51,10 +52,56 @@ static void         testWorks(::AME::Core *core)
     totalWorks += executeTestWorks<1024, std::chrono::microseconds, us>(core);
     totalWorks += executeTestWorks<10000, std::chrono::milliseconds, ms>(core);
     totalWorks += executeTestWorks<1000000, std::chrono::milliseconds, ms>(core);
-    totalWorks += executeTestWorks<5000000, std::chrono::milliseconds, ms>(core);
+    totalWorks += executeTestWorks<9000000, std::chrono::milliseconds, ms>(core);
 
     std::cout   << ::std::endl << "Total for "
                 << totalWorks << " Works: "
+                << ::std::chrono::duration_cast<std::chrono::milliseconds>(::AME::Timeout::Clock::now() - t1).count() << ms
+                << ::std::endl;
+}
+
+class Service
+{
+    ::std::string const _name;
+
+    public:
+        inline Service(::std::string const &name = "World")
+            : _name(name)
+        {}
+
+        Service(Service const &) = delete;
+        Service(Service &&) = delete;
+
+        bool update(void)
+        {
+            ::std::cout << "Hello " << _name << " !" << ::std::endl;
+            return ::AME::Core::STOP;
+        }
+
+        bool speak(::std::string const &WhatIsSaying)
+        {
+            ::std::cout << _name << ": " << WhatIsSaying << ::std::endl;
+            return ::AME::Core::STOP;
+        }
+};
+
+static void             testService(::AME::Core *core)
+{
+    auto                t1 = ::AME::Timeout::Clock::now();
+    Service             toto("Toto");
+    ::std::string const hw("Hello World !");
+
+    core->post(&Service::update);
+    core->post(&Service::update, toto);
+    core->post(&Service::update, &toto);
+    core->post(&Service::update, "Tata");
+
+    core->post(&Service::speak, toto, hw);
+    core->post(&Service::speak, &toto, hw);
+
+    core->run();
+
+    std::cout   << ::std::endl << "Total: "
                 << ::std::chrono::duration_cast<std::chrono::milliseconds>(::AME::Timeout::Clock::now() - t1).count() << ms
                 << ::std::endl;
 }
@@ -63,6 +110,7 @@ static void         testTimeout(::AME::Core *core)
 {
     auto            t1 = ::AME::Timeout::Clock::now();
     ::AME::Timeout  timeout(3000);
+    uint32_t        i = 0;
 
     core->setTimeout(timeout, [](::std::string const &name)
     {
@@ -71,6 +119,11 @@ static void         testTimeout(::AME::Core *core)
     core->setTimeout(timeout + 2000, [](void)
     {
         ::std::cout << "Hello after 5000 ms" << ::std::endl;
+    });
+    core->setInterval(1000, [&i]() -> bool
+    {
+        ::std::cout << ++i << ::std::endl;
+        return (i == 5u) ? ::AME::Core::STOP : ::AME::Core::CONTINUE;
     });
 
     core->run();
@@ -85,17 +138,15 @@ static ::std::size_t    executeTestWorksThreads(::AME::Core *core)
 {
     auto t1 = ::AME::Timeout::Clock::now();
 
-    core->post([](::AME::Core *core) -> bool
+    core->post([](::AME::Core *core)
     {
         for (::std::size_t i = 0; i < NB_WORKS; ++i)
         {
-            core->post([]() -> bool
+            core->post([]()
             {
                 ::std::this_thread::sleep_for(::AME::Timeout::Ms(8));
-                return ::AME::Core::STOP;
             });
         }
-        return ::AME::Core::STOP;
     }, core);
 
     core->addThreads(3);
@@ -131,7 +182,8 @@ int main(void)
     try
     {
         launchTest(&core, "Push/Pop work on core with 1 thread (loading test)", &testWorks);
-        launchTest(&core, "Set timeout on core with 1 thread", &testTimeout);
+        launchTest(&core, "Test service on core with 1 thread", &testService);
+        launchTest(&core, "Set timeout and Interval on core with 1 thread", &testTimeout);
         launchTest(&core, "Push/Pop work that sleep 8ms on core with 4 thread (perf test)", &testWorksThreads);
     }
     catch (::std::exception const &ex)
