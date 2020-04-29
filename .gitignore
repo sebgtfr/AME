@@ -1,0 +1,12 @@
+# Editor
+.vscode
+.vs
+
+#directories
+build
+out
+.dist
+
+#File
+CMakeSettings.json
+*~
